@@ -1,5 +1,5 @@
 {
-  "cSpell.words": ["mpget", "Zhao"],
+  "cSpell.words": ["mpget", "Sogou", "Zhao"],
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.patterns": {
     "tsconfig.json": "tsconfig.*.json, env.d.ts, typed-router.d.ts",
