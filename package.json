@@ -1,20 +1,25 @@
 {
   "name": "mpget",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "微信公众号内容搜索与获取终端工具",
+  "type": "module",
+  "bin": { "mpget": "./dist/index.js" },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "keywords": [],
-  "author": "ZouZhao",
-  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
   "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.0.9",
-      "onFail": "download"
-    }
+    "packageManager": { "name": "pnpm", "version": "^11.0.9", "onFail": "download" }
   },
-  "type": "module"
+  "license": "ISC"
 }
