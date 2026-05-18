@@ -153,14 +153,18 @@ Commit includes: 搜狗搜索、反爬检测、realUrl 解析、正文提取、�
 <!DOCTYPE html>
 <html><body>
 <div class="results">
-<div class="vrwrap">
+<li id="sogou_vr_11002601_box_0">
+<div class="txt-box">
 <a id="sogou_vr_11002601_title_0" href="/weixin?type=2&query=AI&redirect=true&url=abc123">AI文章标题1</a>
 <div class="s-p"><span class="s2">2024-01-15</span></div>
 </div>
-<div class="vrwrap">
+</li>
+<li id="sogou_vr_11002601_box_1">
+<div class="txt-box">
 <a id="sogou_vr_11002601_title_1" href="/weixin?type=2&query=AI&redirect=true&url=def456">AI文章标题2</a>
 <div class="s-p"><span class="s2">2024-01-14</span></div>
 </div>
+</li>
 </div>
 </body></html>
 ```
