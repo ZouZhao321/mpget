@@ -3,11 +3,22 @@
   "version": "1.0.0",
   "description": "微信公众号内容搜索与获取终端工具",
   "type": "module",
-  "bin": { "mpget": "./dist/index.js" },
+  "bin": {
+    "mpget": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "author": {
+    "name": "zouzhao",
+    "email": "wszwc3721@163.com"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
@@ -18,8 +29,27 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "devEngines": {
-    "packageManager": { "name": "pnpm", "version": "^11.0.9", "onFail": "download" }
+  "engines": {
+    "node": ">=18"
   },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.0.9",
+      "onFail": "download"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZouZhao321/mpget.git"
+  },
+  "homepage": "https://github.com/ZouZhao321/mpget#readme",
+  "bugs": {
+    "url": "https://github.com/ZouZhao321/mpget/issues"
+  },
+  "keywords": [
+    "mpget",
+    "sogou|wechat"
+  ],
   "license": "ISC"
 }
