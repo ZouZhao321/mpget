@@ -14,7 +14,7 @@ async function handleSearch(args: Record<string, unknown>): Promise<{ isError: b
   try {
     const result = all
       ? { query, page: 1, results: await searchSogouAll(query, maxPages) }
-      : await searchSogou(query, page, false);
+      : await searchSogou(query, page, true);
     return { isError: false, content: [{ type: 'text', text: JSON.stringify(result) }] };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -27,13 +27,9 @@ async function handleContent(args: Record<string, unknown>): Promise<{ isError: 
   const url = args.url as string;
   const referer = args.referer as string | undefined;
 
-  try {
-    const content = await fetchArticleContent(url, referer);
-    return { isError: false, content: [{ type: 'text', text: JSON.stringify({ url, content }) }] };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { isError: true, content: [{ type: 'text', text: `获取正文失败: ${msg}` }] };
-  }
+  const content = await fetchArticleContent(url, referer);
+  const isError = content.startsWith('获取文章内容失败');
+  return { isError, content: [{ type: 'text', text: JSON.stringify({ url, content }) }] };
 }
 
 export function createMcpServer(): Server {

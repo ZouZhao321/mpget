@@ -21,7 +21,7 @@ describe('MCP tool handlers', () => {
       const fakeResult = { query: 'test', page: 1, results: [{ title: 'T', link: 'L', realUrl: '', publishTime: 'P', page: '1' }] };
       mockSearch.mockResolvedValue(fakeResult);
       const result = await __test__.handleSearch({ query: 'test' });
-      expect(mockSearch).toHaveBeenCalledWith('test', 1, false);
+      expect(mockSearch).toHaveBeenCalledWith('test', 1, true);
       expect(result.isError).toBe(false);
       expect(JSON.parse(result.content[0].text)).toEqual(fakeResult);
     });
@@ -43,6 +43,7 @@ describe('MCP tool handlers', () => {
     it('网络错误时返回 isError', async () => {
       mockSearch.mockRejectedValue(new Error('NETWORK: timeout'));
       const result = await __test__.handleSearch({ query: 'test' });
+      expect(mockSearch).toHaveBeenCalledWith('test', 1, true);
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('网络请求失败');
     });
@@ -61,6 +62,12 @@ describe('MCP tool handlers', () => {
       mockContent.mockResolvedValue('正文');
       await __test__.handleContent({ url: 'https://mp.weixin.qq.com/s/xxx', referer: 'https://weixin.sogou.com' });
       expect(mockContent).toHaveBeenCalledWith('https://mp.weixin.qq.com/s/xxx', 'https://weixin.sogou.com');
+    });
+
+    it('fetchArticleContent 返回错误字符串时 isError 为 true', async () => {
+      mockContent.mockResolvedValue('获取文章内容失败: 正文为空');
+      const result = await __test__.handleContent({ url: 'https://mp.weixin.qq.com/s/xxx' });
+      expect(result.isError).toBe(true);
     });
   });
 
