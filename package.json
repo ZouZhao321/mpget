@@ -21,8 +21,10 @@
     "email": "wszwc3721@163.com"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "cheerio": "^1.0.0",
-    "commander": "^12.0.0"
+    "commander": "^12.0.0",
+    "mpget": "link:"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
