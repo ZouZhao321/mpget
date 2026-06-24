@@ -257,9 +257,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  mpget: "link:"
-
 importers:
   .:
     dependencies:

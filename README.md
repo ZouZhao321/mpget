@@ -42,11 +42,11 @@ mpget content "https://mp.weixin.qq.com/s/xxx"
 
 **Search options:**
 
-| Option | Description | Default |
-|---|---|---|
-| `-p, --page <n>` | Page number | `1` |
-| `-a, --all` | Fetch all pages | `false` |
-| `-m, --max <n>` | Max pages when `--all` | `10` |
+| Option           | Description            | Default |
+| ---------------- | ---------------------- | ------- |
+| `-p, --page <n>` | Page number            | `1`     |
+| `-a, --all`      | Fetch all pages        | `false` |
+| `-m, --max <n>`  | Max pages when `--all` | `10`    |
 
 ### MCP Server
 
@@ -99,11 +99,11 @@ All commands output JSON to stdout. Errors go to stderr as structured JSON.
 
 **Exit codes:**
 
-| Code | Meaning |
-|---|---|
-| `0` | Success |
-| `1` | Anti-spider triggered or network error |
-| `2` | Invalid arguments |
+| Code | Meaning                                |
+| ---- | -------------------------------------- |
+| `0`  | Success                                |
+| `1`  | Anti-spider triggered or network error |
+| `2`  | Invalid arguments                      |
 
 ## Tech Stack
 

@@ -93,7 +93,7 @@ export async function resolveRealUrl(sogouUrl: string): Promise<string> {
     const html = await res.text()
     if (isAnti(res.url, html)) return ""
     const parts: string[] = []
-    const re = /url\s*\+=\s*'([^']+)'/g
+    const re = /url\s*\+=\s*['"]([^'"]+)['"]/g
     let m: RegExpExecArray | null
     while ((m = re.exec(html)) !== null) parts.push(m[1])
     return parts.length ? "https://mp." + parts.join("").replace(/@/g, "") : ""
