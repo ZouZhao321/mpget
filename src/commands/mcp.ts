@@ -18,7 +18,7 @@ async function handleSearch(args: Record<string, unknown>): Promise<{ isError: b
     return { isError: false, content: [{ type: 'text', text: JSON.stringify(result) }] };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg === 'ANTISPIDER') return { isError: true, content: [{ type: 'text', text: '搜狗反爬机制触发，请稍后重试' }] };
+    if (msg.startsWith('ANTISPIDER')) return { isError: true, content: [{ type: 'text', text: '搜狗反爬机制触发，请稍后重试' }] };
     return { isError: true, content: [{ type: 'text', text: `网络请求失败: ${msg}` }] };
   }
 }
@@ -26,10 +26,14 @@ async function handleSearch(args: Record<string, unknown>): Promise<{ isError: b
 async function handleContent(args: Record<string, unknown>): Promise<{ isError: boolean; content: Array<{ type: 'text'; text: string }> }> {
   const url = args.url as string;
   const referer = args.referer as string | undefined;
-
-  const content = await fetchArticleContent(url, referer);
-  const isError = content.startsWith('获取文章内容失败');
-  return { isError, content: [{ type: 'text', text: JSON.stringify({ url, content }) }] };
+  try {
+    const content = await fetchArticleContent(url, referer);
+    const isError = content.startsWith('获取文章内容失败');
+    return { isError, content: [{ type: 'text', text: JSON.stringify({ url, content }) }] };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { isError: true, content: [{ type: 'text', text: `获取文章内容失败: ${msg}` }] };
+  }
 }
 
 export function createMcpServer(): Server {

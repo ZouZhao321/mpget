@@ -69,6 +69,13 @@ describe('MCP tool handlers', () => {
       const result = await __test__.handleContent({ url: 'https://mp.weixin.qq.com/s/xxx' });
       expect(result.isError).toBe(true);
     });
+
+    it('fetchArticleContent 抛出异常时返回 isError', async () => {
+      mockContent.mockRejectedValue(new Error('network boom'));
+      const result = await __test__.handleContent({ url: 'https://example.com' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('获取文章内容失败');
+    });
   });
 
   describe('createMcpServer', () => {
