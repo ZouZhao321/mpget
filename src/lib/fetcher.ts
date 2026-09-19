@@ -6,13 +6,26 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0"
 const TIMEOUT = 15_000
 
+// 搜狗 /link 中间页依赖搜索阶段建立的会话 cookie，原生 fetch 不持久化，这里手动维护一个最小 jar
+let cookieJar = ""
+
+function collectCookies(res: Response): void {
+  const getSetCookie = (res.headers as { getSetCookie?: () => string[] }).getSetCookie
+  if (typeof getSetCookie !== "function") return
+  const parts = getSetCookie
+    .call(res.headers)
+    .map((c) => c.split(";")[0])
+    .filter(Boolean)
+  if (parts.length) cookieJar = parts.join("; ")
+}
+
 function isAnti(url: string, body: string): boolean {
   const u = url.toLowerCase()
   const b = body.toLowerCase()
   return u.includes("antispider") || b.includes("seccoderight") || b.includes("anti.min.css")
 }
 
-async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+export async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), TIMEOUT)
   try {
@@ -22,7 +35,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
-function headers(extra: Record<string, string> = {}): Record<string, string> {
+export function headers(extra: Record<string, string> = {}): Record<string, string> {
   return {
     Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
@@ -67,6 +80,7 @@ export async function searchSogou(
 
   const html = await res.text()
   if (isAnti(res.url, html)) throw new Error("ANTISPIDER")
+  collectCookies(res)
 
   const $ = cheerio.load(html)
   const results: SearchResult[] = []
@@ -74,12 +88,15 @@ export async function searchSogou(
     const $el = $(el)
     let link = $el.attr("href") ?? ""
     if (link && !link.startsWith("http")) link = `https://weixin.sogou.com${link}`
-    const pub = $(`li[id^="sogou_vr_11002601_box_"] .txt-box .s-p .s2`).eq(i).text().trim()
+    const box = $el.closest('li[id^="sogou_vr_11002601_box_"]')
+    const s2 = box.find(".txt-box .s-p .s2").text().trim()
+    const account = box.find(".txt-box .s-p .all-time-y2").text().trim()
     results.push({
       title: $el.text().trim(),
       link,
       realUrl: "",
-      publishTime: pub,
+      publishTime: parseTimeConvert(s2),
+      account,
       page: String(page),
     })
   })
@@ -87,19 +104,49 @@ export async function searchSogou(
   return { query, page, results }
 }
 
+function parseTimeConvert(text: string): string {
+  const m = text.match(/timeConvert\('(\d+)'\)/)
+  if (!m) return text
+  return formatTimestamp(Number(m[1]))
+}
+
+function formatTimestamp(ts: number): string {
+  const d = new Date((ts + 8 * 3600) * 1000)
+  return d.toISOString().slice(0, 10)
+}
+
 export async function resolveRealUrl(sogouUrl: string): Promise<string> {
   try {
-    const res = await fetchWithTimeout(sogouUrl, { headers: headers() })
+    const hdrs = headers()
+    if (cookieJar) hdrs["Cookie"] = cookieJar
+    hdrs["Referer"] = "https://weixin.sogou.com/"
+    const res = await fetchWithTimeout(sogouUrl, { headers: hdrs })
     const html = await res.text()
     if (isAnti(res.url, html)) return ""
     const parts: string[] = []
     const re = /url\s*\+=\s*['"]([^'"]+)['"]/g
     let m: RegExpExecArray | null
     while ((m = re.exec(html)) !== null) parts.push(m[1])
-    return parts.length ? "https://mp." + parts.join("").replace(/@/g, "") : ""
+    if (!parts.length) return ""
+    const joined = parts.join("").replace(/@/g, "")
+    if (joined.startsWith("https://mp.") || joined.startsWith("http://mp.")) return joined
+    return `https://mp.${joined}`
   } catch {
     return ""
   }
+}
+
+export async function resolveResultsRealUrls(results: SearchResult[]): Promise<SearchResult[]> {
+  const out: SearchResult[] = []
+  for (const r of results) {
+    let realUrl = ""
+    if (r.link.includes("weixin.sogou.com/link")) {
+      realUrl = await resolveRealUrl(r.link)
+      await sleep(200)
+    }
+    out.push({ ...r, realUrl })
+  }
+  return out
 }
 
 export async function fetchArticleContent(realUrl: string, referer?: string): Promise<string> {
@@ -120,6 +167,8 @@ export async function fetchArticleContent(realUrl: string, referer?: string): Pr
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
+
+export { sleep }
 
 export async function searchSogouAll(query: string, maxPages = 5): Promise<SearchResult[]> {
   const all: SearchResult[] = []

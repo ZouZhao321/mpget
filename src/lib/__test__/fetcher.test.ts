@@ -24,17 +24,21 @@ function mockRes(url: string, html: string): Response {
 describe("searchSogou", () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it("解析搜索结果", async () => {
-    const html = readFileSync(join(fixtureDir, "sogou-search.html"), "utf-8")
+  it("解析真实搜索结果（公众号名 + timeConvert 时间戳）", async () => {
+    const html = readFileSync(join(fixtureDir, "sogou-search-real.html"), "utf-8")
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(mockRes("https://weixin.sogou.com/weixin?query=AI", html)),
     )
     const r = await searchSogou("AI")
-    expect(r.query).toBe("AI")
-    expect(r.results).toHaveLength(2)
-    expect(r.results[0].title).toBe("AI文章标题1")
-    expect(r.results[1].publishTime).toBe("2024-01-14")
+    expect(r.results.length).toBeGreaterThan(0)
+    const first = r.results[0]
+    expect(first.title.length).toBeGreaterThan(0)
+    // 公众号名来自 .all-time-y2，不再为空
+    expect(first.account).toBe("CFD之道")
+    // publishTime 由 timeConvert 时间戳转换而来，不再是一段 script 源码
+    expect(first.publishTime).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(first.publishTime).not.toContain("timeConvert")
   })
 
   it("反爬检测", async () => {
@@ -58,15 +62,15 @@ describe("searchSogou", () => {
 describe("resolveRealUrl", () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it("提取真实URL", async () => {
-    const html = readFileSync(join(fixtureDir, "sogou-redirect.html"), "utf-8")
+  it("真实 /link 页面：首段已含 https://mp. 前缀，不再重复拼接", async () => {
+    const html = readFileSync(join(fixtureDir, "sogou-redirect-real.html"), "utf-8")
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(mockRes("https://weixin.sogou.com/redirect", html)),
+      vi.fn().mockResolvedValue(mockRes("https://weixin.sogou.com/link?url=test", html)),
     )
-    expect(await resolveRealUrl("https://weixin.sogou.com/redirect")).toBe(
-      "https://mp.weixin.qq.com/r/abc_def_123",
-    )
+    const url = await resolveRealUrl("https://weixin.sogou.com/link?url=test")
+    expect(url).toMatch(/^https:\/\/mp\.weixin\.qq\.com\/s\?src=11/)
+    expect(url).not.toContain("https://mp.https://")
   })
 
   it("反爬返回空", async () => {
