@@ -4,14 +4,27 @@ vi.mock("../../lib/fetcher.js", () => ({
   searchSogou: vi.fn(),
   searchSogouAll: vi.fn(),
   fetchArticleContent: vi.fn(),
+  resolveResultsRealUrls: vi.fn(),
+}))
+
+vi.mock("../../lib/album.js", () => ({
+  fetchAlbumArticles: vi.fn(),
 }))
 
 import { createMcpServer, __test__ } from "../mcp.js"
-import { searchSogou, searchSogouAll, fetchArticleContent } from "../../lib/fetcher.js"
+import {
+  searchSogou,
+  searchSogouAll,
+  fetchArticleContent,
+  resolveResultsRealUrls,
+} from "../../lib/fetcher.js"
+import { fetchAlbumArticles } from "../../lib/album.js"
 
 const mockSearch = vi.mocked(searchSogou)
 const mockSearchAll = vi.mocked(searchSogouAll)
 const mockContent = vi.mocked(fetchArticleContent)
+const mockResolve = vi.mocked(resolveResultsRealUrls)
+const mockAlbum = vi.mocked(fetchAlbumArticles)
 
 describe("MCP tool handlers", () => {
   beforeEach(() => {
@@ -26,14 +39,17 @@ describe("MCP tool handlers", () => {
         results: [{ title: "T", link: "L", realUrl: "", publishTime: "P", page: "1" }],
       }
       mockSearch.mockResolvedValue(fakeResult)
+      mockResolve.mockImplementation(async (results) => results)
       const result = await __test__.handleSearch({ query: "test" })
       expect(mockSearch).toHaveBeenCalledWith("test", 1, true)
+      expect(mockResolve).toHaveBeenCalledWith(fakeResult.results)
       expect(result.isError).toBe(false)
       expect(JSON.parse(result.content[0].text)).toEqual(fakeResult)
     })
 
     it("all=true 时调用 searchSogouAll", async () => {
       mockSearchAll.mockResolvedValue([])
+      mockResolve.mockImplementation(async (results) => results)
       const result = await __test__.handleSearch({ query: "q", all: true, maxPages: 3 })
       expect(mockSearchAll).toHaveBeenCalledWith("q", 3)
       expect(result.isError).toBe(false)
@@ -52,6 +68,37 @@ describe("MCP tool handlers", () => {
       expect(mockSearch).toHaveBeenCalledWith("test", 1, true)
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toContain("网络请求失败")
+    })
+  })
+
+  describe("album handler", () => {
+    it("调用 fetchAlbumArticles 并返回结果", async () => {
+      const fakeAlbum = {
+        total: "119",
+        continueFlag: 1,
+        reverseContinueFlag: 0,
+        articles: [
+          {
+            title: "A",
+            createTime: 1,
+            msgid: "1",
+            itemidx: "1",
+            url: "https://mp.weixin.qq.com/s?a",
+          },
+        ],
+      }
+      mockAlbum.mockResolvedValue(fakeAlbum)
+      const result = await __test__.handleAlbum({ biz: "B", albumId: "A" })
+      expect(mockAlbum).toHaveBeenCalledWith({ biz: "B", albumId: "A", count: 10 })
+      expect(result.isError).toBe(false)
+      expect(JSON.parse(result.content[0].text)).toEqual(fakeAlbum)
+    })
+
+    it("fetchAlbumArticles 抛错时返回 isError", async () => {
+      mockAlbum.mockRejectedValue(new Error("ALBUM_RET_-3"))
+      const result = await __test__.handleAlbum({ biz: "B", albumId: "A" })
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain("获取合集失败")
     })
   })
 
