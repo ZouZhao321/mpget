@@ -1,8 +1,6 @@
 [English](../README.md)
 
-> **⚠️ 本仓库已归档。** 功能已合并至 [url-to-markdown](https://github.com/ZouZhao321/url-to-markdown)，请使用新仓库。
-
-# mpget (已归档)
+# mpget
 
 CLI 工具与 MCP 服务，用于搜索和获取微信公众号文章（基于搜狗微信搜索）。
 

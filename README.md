@@ -1,8 +1,6 @@
 [中文](./docs/README.zh-CN.md)
 
-> **⚠️ This repository has been archived.** All functionality has been merged into [url-to-markdown](https://github.com/ZouZhao321/url-to-markdown). Please use that repository for future development.
-
-# mpget (Archived)
+# mpget
 
 CLI tool and MCP server for searching and fetching WeChat Official Account articles via Sogou.
 
