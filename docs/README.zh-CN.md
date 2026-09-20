@@ -12,6 +12,7 @@ CLI 工具与 MCP 服务，用于搜索和获取微信公众号文章（基于�
 - **Agent Skill** — `mpget init` 一键注入 Skill 到 `.claude/skills/`，带版本同步
 - **多页搜索** — 自动分页，支持配置最大页数和请求间隔
 - **文章内容提取** — 获取并清洗微信公众号文章正文
+- **合集文章列表** — 拉取某公众号合集内全部文章（含真实 mp.weixin.qq.com 链接）
 - **结构化 JSON 输出** — 结果输出到 stdout，错误输出到 stderr，带类型化退出码
 
 ## 安装
@@ -38,15 +39,22 @@ mpget search "关键词" -a -m 5
 
 # 获取文章内容
 mpget content "https://mp.weixin.qq.com/s/xxx"
+
+# 获取某公众号合集内的文章列表（biz 与 album_id 取自文章页）
+mpget album "MzkxMTY4NTAyNQ==" "4371775694981152789" -c 10
+
+# 拉取整个合集
+mpget album "MzkxMTY4NTAyNQ==" "4371775694981152789" --all
 ```
 
 **搜索参数：**
 
-| 参数             | 说明               | 默认值  |
-| ---------------- | ------------------ | ------- |
-| `-p, --page <n>` | 页码               | `1`     |
-| `-a, --all`      | 获取全部页         | `false` |
-| `-m, --max <n>`  | `--all` 时最大页数 | `10`    |
+| 参数             | 说明                             | 默认值  |
+| ---------------- | -------------------------------- | ------- |
+| `-p, --page <n>` | 页码                             | `1`     |
+| `-a, --all`      | 获取全部页                       | `false` |
+| `-m, --max <n>`  | `--all` 时最大页数               | `10`    |
+| `--no-resolve`   | 不解析真实 mp.weixin.qq.com 链接 | `false` |
 
 ### MCP Server
 
@@ -54,9 +62,10 @@ mpget content "https://mp.weixin.qq.com/s/xxx"
 mpget mcp
 ```
 
-启动基于 stdio 的 MCP Server，提供两个工具：
+启动基于 stdio 的 MCP Server，提供三个工具：
 
-- **`search`** — query, page, all, maxPages
+- **`search`** — query, page, all, maxPages, resolve（默认解析真实链接）
+- **`album`** — biz, albumId, count, beginMsgid, beginItemidx
 - **`content`** — url, referer
 
 兼容所有支持 MCP 协议的 Agent（Claude、Cursor 等）。
@@ -81,7 +90,9 @@ mpget init
     {
       "title": "文章标题",
       "link": "https://weixin.sogou.com/link?url=...",
-      "publishTime": "2025-01-01"
+      "realUrl": "https://mp.weixin.qq.com/s?src=11&...",
+      "publishTime": "2025-01-01",
+      "account": "公众号名"
     }
   ],
   "total": 10,

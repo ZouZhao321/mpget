@@ -2,7 +2,13 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 import { Command } from "commander"
-import { searchSogou, searchSogouAll, fetchArticleContent } from "../lib/fetcher.js"
+import {
+  searchSogou,
+  searchSogouAll,
+  fetchArticleContent,
+  resolveResultsRealUrls,
+} from "../lib/fetcher.js"
+import { fetchAlbumArticles } from "../lib/album.js"
 import { VERSION, CLI_NAME } from "../version.js"
 
 async function handleSearch(
@@ -12,12 +18,22 @@ async function handleSearch(
   const page = (args.page as number) ?? 1
   const all = (args.all as boolean) ?? false
   const maxPages = (args.maxPages as number) ?? 5
+  const resolve = (args.resolve as boolean) ?? true
 
   try {
-    const result = all
-      ? { query, page: 1, results: await searchSogouAll(query, maxPages) }
-      : await searchSogou(query, page, true)
-    return { isError: false, content: [{ type: "text", text: JSON.stringify(result) }] }
+    const results = all
+      ? await searchSogouAll(query, maxPages)
+      : (await searchSogou(query, page, true)).results
+    const finalResults = resolve ? await resolveResultsRealUrls(results) : results
+    return {
+      isError: false,
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({ query, page: all ? 1 : page, results: finalResults }),
+        },
+      ],
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     if (msg.startsWith("ANTISPIDER"))
@@ -41,6 +57,32 @@ async function handleContent(
   }
 }
 
+async function handleAlbum(
+  args: Record<string, unknown>,
+): Promise<{ isError: boolean; content: Array<{ type: "text"; text: string }> }> {
+  const biz = args.biz as string
+  const albumId = args.albumId as string
+  if (!biz || !albumId) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: "获取合集失败: biz 与 albumId 不能为空" }],
+    }
+  }
+  try {
+    const result = await fetchAlbumArticles({
+      biz,
+      albumId,
+      count: (args.count as number | undefined) ?? 10,
+      beginMsgid: args.beginMsgid as string | undefined,
+      beginItemidx: args.beginItemidx as string | undefined,
+    })
+    return { isError: false, content: [{ type: "text", text: JSON.stringify(result) }] }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return { isError: true, content: [{ type: "text", text: `获取合集失败: ${msg}` }] }
+  }
+}
+
 export function createMcpServer(): Server {
   const server = new Server({ name: CLI_NAME, version: VERSION }, { capabilities: { tools: {} } })
 
@@ -56,8 +98,27 @@ export function createMcpServer(): Server {
             page: { type: "number", description: "页码，默认 1", default: 1 },
             all: { type: "boolean", description: "自动翻页", default: false },
             maxPages: { type: "number", description: "最大页数，all=true 时生效", default: 5 },
+            resolve: { type: "boolean", description: "解析真实文章链接，默认 true", default: true },
           },
           required: ["query"],
+        },
+      },
+      {
+        name: "album",
+        description: "获取公众号合集内的文章列表（含真实文章链接），需要 biz 与 albumId",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            biz: {
+              type: "string",
+              description: "公众号 __biz 值（文章页 var biz，形如 MzkxMTY4NTAyNQ==）",
+            },
+            albumId: { type: "string", description: "合集 ID（文章页 album_id 字段）" },
+            count: { type: "number", description: "每页条数，上限 20", default: 10 },
+            beginMsgid: { type: "string", description: "翻页起点 msgid" },
+            beginItemidx: { type: "string", description: "翻页起点 itemidx" },
+          },
+          required: ["biz", "albumId"],
         },
       },
       {
@@ -78,6 +139,7 @@ export function createMcpServer(): Server {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params
     if (name === "search") return handleSearch(args ?? {})
+    if (name === "album") return handleAlbum(args ?? {})
     if (name === "content") return handleContent(args ?? {})
     throw new Error(`Unknown tool: ${name}`)
   })
@@ -91,7 +153,7 @@ export async function startMcpServer(): Promise<void> {
   await server.connect(transport)
 }
 
-export const __test__ = { handleSearch, handleContent }
+export const __test__ = { handleSearch, handleContent, handleAlbum }
 
 export function setupMcpCommand(program: Command): void {
   program

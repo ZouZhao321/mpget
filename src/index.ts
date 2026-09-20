@@ -5,6 +5,7 @@ import { setupSearchCommand } from "./commands/search.js"
 import { setupContentCommand } from "./commands/content.js"
 import { setupInitCommand } from "./commands/init.js"
 import { setupMcpCommand } from "./commands/mcp.js"
+import { setupAlbumCommand } from "./commands/album.js"
 
 const program = new Command()
 program.name(CLI_NAME).version(VERSION).description("微信公众号内容搜索与获取终端工具")
@@ -12,4 +13,5 @@ setupSearchCommand(program)
 setupContentCommand(program)
 setupInitCommand(program)
 setupMcpCommand(program)
+setupAlbumCommand(program)
 program.parse(process.argv)

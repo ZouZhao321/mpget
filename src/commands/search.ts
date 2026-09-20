@@ -1,5 +1,5 @@
 import { Command } from "commander"
-import { searchSogou, searchSogouAll } from "../lib/fetcher.js"
+import { searchSogou, searchSogouAll, resolveResultsRealUrls } from "../lib/fetcher.js"
 
 export function setupSearchCommand(program: Command): void {
   program
@@ -8,11 +8,18 @@ export function setupSearchCommand(program: Command): void {
     .option("-p, --page <number>", "页码", "1")
     .option("-a, --all", "全页自动翻页")
     .option("-m, --max-pages <number>", "最大页数", "5")
+    .option("--no-resolve", "不解析真实文章链接（保留搜狗中间页地址）")
     .action(async (query, opts) => {
       try {
-        const result = opts.all
-          ? { query, page: 1, results: await searchSogouAll(query, parseInt(opts.maxPages)) }
-          : await searchSogou(query, parseInt(opts.page))
+        const results = opts.all
+          ? await searchSogouAll(query, parseInt(opts.maxPages))
+          : (await searchSogou(query, parseInt(opts.page))).results
+        const finalResults = opts.resolve ? await resolveResultsRealUrls(results) : results
+        const result = {
+          query,
+          page: opts.all ? 1 : parseInt(opts.page),
+          results: finalResults,
+        }
         process.stdout.write(JSON.stringify(result) + "\n")
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
