@@ -44,3 +44,6 @@ playwright-report/
 .history/
 
 .iga/
+
+# 临时中间结果
+.tmp/

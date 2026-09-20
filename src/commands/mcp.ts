@@ -27,7 +27,12 @@ async function handleSearch(
     const finalResults = resolve ? await resolveResultsRealUrls(results) : results
     return {
       isError: false,
-      content: [{ type: "text", text: JSON.stringify({ query, page, results: finalResults }) }],
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({ query, page: all ? 1 : page, results: finalResults }),
+        },
+      ],
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -57,6 +62,12 @@ async function handleAlbum(
 ): Promise<{ isError: boolean; content: Array<{ type: "text"; text: string }> }> {
   const biz = args.biz as string
   const albumId = args.albumId as string
+  if (!biz || !albumId) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: "获取合集失败: biz 与 albumId 不能为空" }],
+    }
+  }
   try {
     const result = await fetchAlbumArticles({
       biz,
@@ -94,7 +105,7 @@ export function createMcpServer(): Server {
       },
       {
         name: "album",
-        description: "获取公众号合集内的文章列表（含真实文章链接），需要 biz 与 album_id",
+        description: "获取公众号合集内的文章列表（含真实文章链接），需要 biz 与 albumId",
         inputSchema: {
           type: "object" as const,
           properties: {

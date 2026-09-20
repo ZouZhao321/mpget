@@ -9,6 +9,17 @@ const TIMEOUT = 15_000
 // 搜狗 /link 中间页依赖搜索阶段建立的会话 cookie，原生 fetch 不持久化，这里手动维护一个最小 jar
 let cookieJar = ""
 
+// 按 cookie 名合并，新值覆盖同名旧值，避免并发搜索时互相覆盖整个 jar
+function mergeCookies(jar: string, incoming: string[]): string {
+  const merged = new Map<string, string>()
+  for (const part of [...jar.split("; "), ...incoming]) {
+    if (!part) continue
+    const eq = part.indexOf("=")
+    if (eq > 0) merged.set(part.slice(0, eq), part.slice(eq + 1))
+  }
+  return [...merged.entries()].map(([k, v]) => `${k}=${v}`).join("; ")
+}
+
 function collectCookies(res: Response): void {
   const getSetCookie = (res.headers as { getSetCookie?: () => string[] }).getSetCookie
   if (typeof getSetCookie !== "function") return
@@ -16,7 +27,7 @@ function collectCookies(res: Response): void {
     .call(res.headers)
     .map((c) => c.split(";")[0])
     .filter(Boolean)
-  if (parts.length) cookieJar = parts.join("; ")
+  if (parts.length) cookieJar = mergeCookies(cookieJar, parts)
 }
 
 function isAnti(url: string, body: string): boolean {
@@ -105,13 +116,16 @@ export async function searchSogou(
 }
 
 function parseTimeConvert(text: string): string {
-  const m = text.match(/timeConvert\('(\d+)'\)/)
+  const m = text.match(/timeConvert\(['"](\d+)['"]\)/)
   if (!m) return text
   return formatTimestamp(Number(m[1]))
 }
 
+// 搜狗时间戳按北京时间（UTC+8）展示日期，与搜狗页面一致
+const CHINA_TZ_OFFSET_SECONDS = 8 * 3600
+
 function formatTimestamp(ts: number): string {
-  const d = new Date((ts + 8 * 3600) * 1000)
+  const d = new Date((ts + CHINA_TZ_OFFSET_SECONDS) * 1000)
   return d.toISOString().slice(0, 10)
 }
 
@@ -136,16 +150,35 @@ export async function resolveRealUrl(sogouUrl: string): Promise<string> {
   }
 }
 
-export async function resolveResultsRealUrls(results: SearchResult[]): Promise<SearchResult[]> {
-  const out: SearchResult[] = []
-  for (const r of results) {
-    let realUrl = ""
-    if (r.link.includes("weixin.sogou.com/link")) {
-      realUrl = await resolveRealUrl(r.link)
-      await sleep(200)
+// 逐条 resolve 独立请求，用有界并发控制速率，并对重复链接去重（只请求一次）
+export async function resolveResultsRealUrls(
+  results: SearchResult[],
+  opts: { concurrency?: number } = {},
+): Promise<SearchResult[]> {
+  const concurrency = opts.concurrency ?? 4
+  const out: SearchResult[] = new Array(results.length)
+  const seen = new Set<string>()
+  let cursor = 0
+
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const i = cursor++
+      if (i >= results.length) return
+      const r = results[i]
+      let realUrl = ""
+      if (r.link.includes("weixin.sogou.com/link") && !seen.has(r.link)) {
+        seen.add(r.link)
+        realUrl = await resolveRealUrl(r.link)
+        await sleep(100)
+      }
+      out[i] = { ...r, realUrl }
     }
-    out.push({ ...r, realUrl })
   }
+
+  const workers = Array.from({ length: Math.min(concurrency, Math.max(results.length, 1)) }, () =>
+    worker(),
+  )
+  await Promise.all(workers)
   return out
 }
 

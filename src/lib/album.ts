@@ -21,20 +21,26 @@ function normalizeUrl(url: string): string {
 }
 
 export async function fetchAlbumArticles(params: AlbumParams): Promise<AlbumResponse> {
+  const count = Math.min(20, Math.max(1, params.count ?? 10))
   const search = new URLSearchParams({
     action: "getalbum",
     scene: "1",
     f: "json",
     __biz: params.biz,
     album_id: params.albumId,
-    count: String(params.count ?? 10),
+    count: String(count),
   })
-  if (params.beginMsgid) search.set("begin_msgid", params.beginMsgid)
-  if (params.beginItemidx) search.set("begin_itemidx", params.beginItemidx)
+  if (params.beginMsgid !== undefined) search.set("begin_msgid", params.beginMsgid)
+  if (params.beginItemidx !== undefined) search.set("begin_itemidx", params.beginItemidx)
 
-  const res = await fetchWithTimeout(`${ALBUM_URL}?${search}`, {
-    headers: headers({ Referer: "https://mp.weixin.qq.com/" }),
-  })
+  let res: Response
+  try {
+    res = await fetchWithTimeout(`${ALBUM_URL}?${search}`, {
+      headers: headers({ Referer: "https://mp.weixin.qq.com/" }),
+    })
+  } catch (e) {
+    throw new Error(`NETWORK: ${e instanceof Error ? e.message : String(e)}`, { cause: e })
+  }
   if (res.status !== 200) throw new Error(`HTTP_${res.status}`)
 
   const data = (await res.json()) as Record<string, unknown>
@@ -61,20 +67,39 @@ export async function fetchAlbumArticles(params: AlbumParams): Promise<AlbumResp
   }
 }
 
+export interface AlbumAllParams {
+  maxPages?: number
+  count?: number
+  beginMsgid?: string
+  beginItemidx?: string
+}
+
 export async function fetchAlbumArticlesAll(
   biz: string,
   albumId: string,
-  maxPages = 50,
+  opts: AlbumAllParams = {},
 ): Promise<AlbumResponse> {
-  let beginMsgid: string | undefined
-  let beginItemidx: string | undefined
+  const maxPages = opts.maxPages ?? 50
+  let beginMsgid: string | undefined = opts.beginMsgid
+  let beginItemidx: string | undefined = opts.beginItemidx
   let total = ""
+  let lastContinue = 1
   const all: AlbumArticle[] = []
 
   for (let page = 1; page <= maxPages; page++) {
-    const r = await fetchAlbumArticles({ biz, albumId, beginMsgid, beginItemidx })
+    const r = await fetchAlbumArticles({
+      biz,
+      albumId,
+      count: opts.count ?? 10,
+      beginMsgid,
+      beginItemidx,
+    })
     if (r.total) total = r.total
-    if (!r.articles.length) break
+    lastContinue = r.continueFlag
+    if (!r.articles.length) {
+      lastContinue = 0
+      break
+    }
     all.push(...r.articles)
     if (!r.continueFlag) break
     const last = r.articles[r.articles.length - 1]
@@ -82,5 +107,5 @@ export async function fetchAlbumArticlesAll(
     beginItemidx = last.itemidx
   }
 
-  return { total, continueFlag: 0, reverseContinueFlag: 0, articles: all }
+  return { total, continueFlag: lastContinue, reverseContinueFlag: 0, articles: all }
 }

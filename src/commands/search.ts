@@ -17,7 +17,7 @@ export function setupSearchCommand(program: Command): void {
         const finalResults = opts.resolve ? await resolveResultsRealUrls(results) : results
         const result = {
           query,
-          page: parseInt(opts.page),
+          page: opts.all ? 1 : parseInt(opts.page),
           results: finalResults,
         }
         process.stdout.write(JSON.stringify(result) + "\n")

@@ -54,6 +54,24 @@ describe("fetchAlbumArticles", () => {
     )
     await expect(fetchAlbumArticles({ biz: "x", albumId: "y" })).rejects.toThrow("ALBUM_RET_-3")
   })
+
+  it("count 被 clamp 到 [1,20]", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(mockRes("https://mp.weixin.qq.com/mp/appmsgalbum", albumJson))
+    vi.stubGlobal("fetch", fetchMock)
+    await fetchAlbumArticles({ biz: "x", albumId: "y", count: 100 })
+    expect(fetchMock.mock.calls[0][0]).toContain("count=20")
+    await fetchAlbumArticles({ biz: "x", albumId: "y", count: -5 })
+    expect(fetchMock.mock.calls[1][0]).toContain("count=1")
+  })
+
+  it("网络失败时抛 NETWORK: 前缀错误", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")))
+    await expect(fetchAlbumArticles({ biz: "x", albumId: "y" })).rejects.toThrow(
+      /^NETWORK: fetch failed/,
+    )
+  })
 })
 
 describe("fetchAlbumArticlesAll", () => {
@@ -106,9 +124,56 @@ describe("fetchAlbumArticlesAll", () => {
     vi.stubGlobal("fetch", fetchMock)
     const r = await fetchAlbumArticlesAll("biz", "album")
     expect(r.articles.map((a) => a.title)).toEqual(["A", "B", "C"])
+    expect(r.continueFlag).toBe(0)
     // 第二次请求携带上一页末条的翻页游标
     const secondUrl = fetchMock.mock.calls[1][0] as string
     expect(secondUrl).toContain("begin_msgid=99")
     expect(secondUrl).toContain("begin_itemidx=1")
+  })
+
+  it("maxPages 截断时 continueFlag 保留为 1（不误报完整）", async () => {
+    const page1 = {
+      base_resp: { ret: 0 },
+      getalbum_resp: {
+        article_list: [
+          {
+            title: "A",
+            create_time: "1",
+            msgid: "100",
+            itemidx: "1",
+            url: "http://mp.weixin.qq.com/s?a",
+          },
+        ],
+        base_info: { article_count: "50" },
+        continue_flag: 1,
+      },
+    }
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockRes("u", page1)))
+    const r = await fetchAlbumArticlesAll("biz", "album", { maxPages: 1, count: 10 })
+    expect(r.articles.length).toBe(1)
+    expect(r.continueFlag).toBe(1)
+  })
+
+  it("count 传递到每一页请求", async () => {
+    const page1 = {
+      base_resp: { ret: 0 },
+      getalbum_resp: {
+        article_list: [
+          {
+            title: "A",
+            create_time: "1",
+            msgid: "100",
+            itemidx: "1",
+            url: "http://mp.weixin.qq.com/s?a",
+          },
+        ],
+        base_info: { article_count: "3" },
+        continue_flag: 0,
+      },
+    }
+    const fetchMock = vi.fn().mockResolvedValue(mockRes("u", page1))
+    vi.stubGlobal("fetch", fetchMock)
+    await fetchAlbumArticlesAll("biz", "album", { maxPages: 3, count: 20 })
+    expect(fetchMock.mock.calls[0][0]).toContain("count=20")
   })
 })
