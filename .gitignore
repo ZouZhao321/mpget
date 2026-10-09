@@ -47,3 +47,6 @@ playwright-report/
 
 # 临时中间结果
 .tmp/
+
+# 独立工作区
+.worktrees/
