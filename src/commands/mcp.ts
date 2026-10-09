@@ -123,7 +123,7 @@ export function createMcpServer(): Server {
       },
       {
         name: "content",
-        description: "获取微信公众号文章正文",
+        description: "获取微信公众号文章正文（Markdown）",
         inputSchema: {
           type: "object" as const,
           properties: {

@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio"
+import { htmlToMarkdown } from "./markdown.js"
 import type { SearchResponse, SearchResult } from "./types.js"
 
 const BASE = "https://weixin.sogou.com/weixin"
@@ -189,9 +190,8 @@ export async function fetchArticleContent(realUrl: string, referer?: string): Pr
     const hdrs = headers()
     if (referer) hdrs["Referer"] = referer
     const res = await fetchWithTimeout(realUrl, { headers: hdrs })
-    const $ = cheerio.load(await res.text())
-    const text = $("#js_content").text().split(/\s+/).filter(Boolean).join("\n")
-    return text || "获取文章内容失败: 正文为空"
+    const markdown = htmlToMarkdown(await res.text())
+    return markdown || "获取文章内容失败: 正文为空"
   } catch (e) {
     return `获取文章内容失败: ${e instanceof Error ? e.message : String(e)}`
   }

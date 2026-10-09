@@ -102,4 +102,50 @@ describe("fetchArticleContent", () => {
       "获取文章内容失败: 未拿到有效的微信公众号文章链接",
     )
   })
+
+  it("正文按 Markdown 返回，保留标题、列表、代码块、图片、引用与表格", async () => {
+    const html = readFileSync(join(fixtureDir, "article-content.html"), "utf-8")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockRes("https://mp.weixin.qq.com/s/a", html)))
+
+    const md = await fetchArticleContent("https://mp.weixin.qq.com/s/a")
+
+    expect(md).toContain("### 小标题")
+    expect(md).toContain("第一段**加粗**文字。")
+    expect(md).toContain("-   条目一")
+    expect(md).toContain("> 引用一段话")
+    expect(md).toContain("```\nnpm install -g mpget\n```")
+    expect(md).toContain("| 列 A | 列 B |")
+    expect(md).toContain("末尾*斜体*结束。")
+  })
+
+  it("图片取 data-src，跳过 data: 占位图", async () => {
+    const html = readFileSync(join(fixtureDir, "article-content.html"), "utf-8")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockRes("https://mp.weixin.qq.com/s/b", html)))
+
+    const md = await fetchArticleContent("https://mp.weixin.qq.com/s/b")
+
+    expect(md).toContain("![示意图](https://mmbiz.qpic.cn/mmbiz_png/abc/0?wx_fmt=png)")
+    expect(md).not.toContain("data:image/gif")
+  })
+
+  it("排除 script/style 与 js_content 之外的内容", async () => {
+    const html = readFileSync(join(fixtureDir, "article-content.html"), "utf-8")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockRes("https://mp.weixin.qq.com/s/c", html)))
+
+    const md = await fetchArticleContent("https://mp.weixin.qq.com/s/c")
+
+    expect(md).not.toContain("脚本内容不该出现在正文里")
+    expect(md).not.toContain("display: none")
+    expect(md).not.toContain("正文之外的噪声")
+  })
+
+  it("没有 js_content 时返回失败提示", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(mockRes("https://mp.weixin.qq.com/s/d", "<div>没有正文</div>")),
+    )
+    expect(await fetchArticleContent("https://mp.weixin.qq.com/s/d")).toBe(
+      "获取文章内容失败: 正文为空",
+    )
+  })
 })
