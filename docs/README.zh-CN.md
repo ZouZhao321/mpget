@@ -11,7 +11,7 @@ CLI 工具与 MCP 服务，用于搜索和获取微信公众号文章（基于�
 - **CLI + MCP 双模式** — 命令行工具 + MCP Server，适配多种 AI Agent
 - **Agent Skill** — `mpget init` 一键注入 Skill 到 `.claude/skills/`，带版本同步
 - **多页搜索** — 自动分页，支持配置最大页数和请求间隔
-- **文章内容提取** — 获取并清洗微信公众号文章正文
+- **文章内容提取** — 正文按 Markdown 返回，保留标题、列表、代码块、图片、引用与表格
 - **合集文章列表** — 拉取某公众号合集内全部文章（含真实 mp.weixin.qq.com 链接）
 - **结构化 JSON 输出** — 结果输出到 stdout，错误输出到 stderr，带类型化退出码
 
@@ -104,7 +104,7 @@ mpget init
 
 ```json
 {
-  "content": "文章正文..."
+  "content": "### 小标题\n\n正文段落，**加粗**文字。\n\n![示意图](https://mmbiz.qpic.cn/mmbiz_png/abc/0?wx_fmt=png)\n\n- 条目一\n- 条目二"
 }
 ```
 
