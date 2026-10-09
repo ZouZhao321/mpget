@@ -128,6 +128,16 @@ describe("fetchArticleContent", () => {
     expect(md).not.toContain("data:image/gif")
   })
 
+  it("图片地址与 alt 按 Markdown 语法转义", async () => {
+    const html = readFileSync(join(fixtureDir, "article-content.html"), "utf-8")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockRes("https://mp.weixin.qq.com/s/e", html)))
+
+    const md = await fetchArticleContent("https://mp.weixin.qq.com/s/e")
+
+    // 地址含空格与圆括号时 turndown 会加尖括号并转义，alt 里的方括号也会被转义
+    expect(md).toContain("![图\\[1\\]](<https://mmbiz.qpic.cn/a/b \\(1\\).png>)")
+  })
+
   it("排除 script/style 与 js_content 之外的内容", async () => {
     const html = readFileSync(join(fixtureDir, "article-content.html"), "utf-8")
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockRes("https://mp.weixin.qq.com/s/c", html)))

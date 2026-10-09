@@ -14,21 +14,19 @@ const turndown = new TurndownService({
 turndown.use(gfm)
 turndown.remove(["script", "style"])
 
-// 微信正文的图片真实地址在 data-src，src 常是 data: 占位图
-turndown.addRule("wechatImage", {
-  filter: "img",
-  replacement: (_content, node) => {
-    const el = node as unknown as { getAttribute(name: string): string | null }
-    const src = el.getAttribute("data-src") || el.getAttribute("src") || ""
-    if (!src || src.startsWith("data:")) return ""
-    const alt = el.getAttribute("alt") || ""
-    return `![${alt}](${src})`
-  },
-})
-
 export function htmlToMarkdown(html: string): string {
   const $ = cheerio.load(html)
-  const content = $("#js_content").html()
-  if (!content) return ""
-  return turndown.turndown(content).trim()
+  const content = $("#js_content")
+
+  // 微信正文的图片真实地址在 data-src，src 常是 data: 占位图；地址与 alt 的 Markdown 转义由 turndown 处理
+  content.find("img").each((_, el) => {
+    const img = $(el)
+    const src = img.attr("data-src") || img.attr("src") || ""
+    if (src && !src.startsWith("data:")) img.attr("src", src)
+    else img.remove()
+  })
+
+  const markup = content.html()
+  if (!markup) return ""
+  return turndown.turndown(markup).trim()
 }
