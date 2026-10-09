@@ -4,7 +4,7 @@ import { fetchArticleContent } from "../lib/fetcher.js"
 export function setupContentCommand(program: Command): void {
   program
     .command("content <url>")
-    .description("获取微信公众号文章正文")
+    .description("获取微信公众号文章正文（Markdown）")
     .option("-r, --referer <url>", "请求来源")
     .action(async (url, opts) => {
       try {

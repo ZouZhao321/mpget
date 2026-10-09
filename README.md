@@ -11,7 +11,7 @@ Designed for **agent integration** — structured JSON output, MCP server suppor
 - **CLI + MCP dual interface** — use as a command-line tool or as an MCP server for AI agents
 - **Agent Skill** — `mpget init` injects a skill file into `.claude/skills/` with version sync
 - **Multi-page search** — automatic pagination with configurable max pages and rate limiting
-- **Article content extraction** — fetches and cleans WeChat article body text
+- **Article content extraction** — fetches WeChat article body as Markdown (headings, lists, code blocks, images, quotes, tables)
 - **Album article listing** — list all articles in an official account's album (with real mp.weixin.qq.com links)
 - **Structured JSON output** — all results to stdout, errors to stderr with typed exit codes
 
@@ -104,7 +104,7 @@ All commands output JSON to stdout. Errors go to stderr as structured JSON.
 
 ```json
 {
-  "content": "Article body text..."
+  "content": "### 小标题\n\n正文段落，**加粗**文字。\n\n![示意图](https://mmbiz.qpic.cn/mmbiz_png/abc/0?wx_fmt=png)\n\n- 条目一\n- 条目二"
 }
 ```
 
